@@ -22,7 +22,7 @@ baseado nos indicadores da Passos Mágicos.
 """)
 
 # Layout com colunas para os parâmetros
-col1, col2 = st.columns(2)
+col1 = st.columns(1)
 
 with col1:
     st.subheader("📊 Indicadores Principais")
@@ -30,11 +30,8 @@ with col1:
     ida = st.slider("IDA (Desempenho Acadêmico)", 0.0, 10.0, 7.0)
     ipp = st.slider("IPP (Psicopedagógico)", 0.0, 10.0, 8.0)
     ipv = st.slider("IPV (Ponto de Virada)", 0.0, 10.0, 7.5)
-
-with col2:
-    st.subheader("📈 Autoavaliação e Social")
     iaa = st.slider("IAA (Autoavaliação)", 0.0, 10.0, 9.0)
-    ips = st.sidebar.slider("IPS (Socioemocional)", 0.0, 10.0, 7.0)
+    ips = st.slider("IPS (Socioemocional)", 0.0, 10.0, 7.0)
 
 # Engenharia de Features (Mesma lógica do notebook)
 gap_aprendizado = ipp - ida
@@ -75,4 +72,3 @@ if st.button("🚀 Analisar Risco"):
     m2.metric("Suporte Total", f"{suporte_total:.2f}")
     m3.metric("Risco Postura", "Sim" if risco_postura == 1 else "Não")
 
-st.sidebar.info("As features 'Gap Aprendizado', 'Suporte Total' e 'Risco Postura' são calculadas automaticamente com base nos sliders.")
