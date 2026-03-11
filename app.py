@@ -9,7 +9,7 @@ st.set_page_config(page_title="Predição de Risco - Passos Mágicos", layout="w
 # Função para carregar os modelos salvos
 @st.cache_resource
 def load_models():
-    # Certifique-se de que esses arquivos estão na mesma pasta ou no seu GitHub
+    # Carrega o modelo (RandomForest) e o Scaler salvos no notebook
     model = joblib.load('modelo_gb_pede.joblib')
     scaler = joblib.load('scaler_pede.joblib')
     return model, scaler
@@ -18,68 +18,66 @@ def load_models():
 try:
     model, scaler = load_models()
 except Exception as e:
-    st.error(f"Erro ao carregar modelos: {e}. Verifique se os arquivos .joblib estão no repositório.")
+    st.error(f"Erro ao carregar modelos: {e}. Verifique se os arquivos .joblib estão no mesmo diretório do app.py.")
     st.stop()
 
-st.title("🎯 Sistema de Previsão de Risco do Aluno (Pergunta 9)")
+st.title("🎯 Sistema de Previsão de Risco do Aluno (Questão 9)")
 st.markdown("""
-Esta interface utiliza o modelo de **Gradient Boosting** para identificar padrões de risco 
-baseado nos indicadores da Passos Mágicos.
+Esta interface utiliza o modelo de **Random Forest** treinado para identificar o risco de defasagem 
+com base nos indicadores de performance e comportamento.
 """)
 
-# --- ORGANIZAÇÃO EM 2 COLUNAS ---
+# --- ORGANIZAÇÃO EM 2 COLUNAS PARA OS SLIDERS ---
+st.subheader("📋 Insira os Indicadores do Aluno")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📊 Desempenho e Engajamento")
-    ieg = st.slider("IEG (Engajamento)", 0.0, 10.0, 8.5)
     ida = st.slider("IDA (Desempenho Acadêmico)", 0.0, 10.0, 7.0)
-    ipp = st.slider("IPP (Psicopedagógico)", 0.0, 10.0, 8.0)
+    ieg = st.slider("IEG (Engajamento)", 0.0, 10.0, 8.0)
+    ian = st.slider("IAN (Adequação de Nível)", 0.0, 10.0, 8.0)
+    inde = st.slider("INDE (Índice Geral)", 0.0, 10.0, 7.5)
 
 with col2:
-    st.subheader("📈 Evolução e Social")
+    ips = st.slider("IPS (Socioemocional)", 0.0, 10.0, 7.5)
+    ipp = st.slider("IPP (Psicopedagógico)", 0.0, 10.0, 7.5)
     ipv = st.slider("IPV (Ponto de Virada)", 0.0, 10.0, 7.5)
-    iaa = st.slider("IAA (Autoavaliação)", 0.0, 10.0, 9.0)
-    ips = st.slider("IPS (Socioemocional)", 0.0, 10.0, 7.0)
 
-# --- ENGENHARIA DE FEATURES ---
-# Mesma lógica utilizada no treinamento do modelo (Questão 9)
-gap_aprendizado = ipp - ida
-suporte_total = (ips + ipp + iaa) / 3
-risco_postura = 1 if (ieg < 7 and ipv < 7) else 0
-
-# Criar DataFrame com as features na ordem exata que o modelo espera
-features_list = ['IDA', 'IEG', 'IAA', 'IPS', 'IPP', 'IPV', 
-                 'GAP_APRENDIZADO', 'SUPORTE_TOTAL', 'RISCO_POSTURA']
+# --- PREPARAÇÃO DOS DADOS ---
+# A ordem das colunas deve ser EXATAMENTE a mesma usada no X_train do notebook:
+# ['IDA', 'IEG', 'IPS', 'IPP', 'IPV', 'IAN', 'INDE']
+features_list = ['IDA', 'IEG', 'IPS', 'IPP', 'IPV', 'IAN', 'INDE']
 
 input_df = pd.DataFrame([[
-    ida, ieg, iaa, ips, ipp, ipv, 
-    gap_aprendizado, suporte_total, risco_postura
+    ida, ieg, ips, ipp, ipv, ian, inde
 ]], columns=features_list)
 
 # --- BOTÃO E PREDIÇÃO ---
 st.markdown("---")
-if st.button("🚀 Analisar Risco do Aluno", use_container_width=True):
-    # 1. Escalar os dados
+if st.button("🚀 Analisar Risco de Defasagem", use_container_width=True):
+    # 1. Escalar os dados (usando o scaler treinado no notebook)
     input_scaled = scaler.transform(input_df)
     
-    # 2. Predição
+    # 2. Realizar a Predição
     prediction = model.predict(input_scaled)[0]
     probability = model.predict_proba(input_scaled)[0][1]
     
-    # 3. Exibir resultados
+    # 3. Exibir resultados de forma visual
+    st.subheader("Resultado da Análise")
+    
     if prediction == 1:
-        st.error(f"### ⚠️ ALERTA DE RISCO: {probability:.1%} de probabilidade")
-        st.markdown("O modelo identificou um padrão de **ALTA probabilidade** de defasagem.")
+        st.error(f"### ⚠️ ALERTA: Risco de Defasagem Detectado")
+        st.write(f"O modelo estima uma probabilidade de **{probability:.1%}** para este perfil entrar em risco.")
+        st.info("Recomendação: Intervenção pedagógica imediata e acompanhamento psicossocial.")
     else:
-        st.success(f"### ✅ BAIXO RISCO: {probability:.1%} de probabilidade")
-        st.markdown("O perfil do aluno apresenta **estabilidade** nos indicadores atuais.")
+        st.success(f"### ✅ Perfil Estável: Baixo Risco")
+        st.write(f"A probabilidade de risco calculada é de apenas **{probability:.1%}**.")
+        st.balloons()
 
-    # Mostrar métricas calculadas
-    st.subheader("Indicadores Calculados")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Gap Aprendizado", f"{gap_aprendizado:.2f}")
-    m2.metric("Suporte Total", f"{suporte_total:.2f}")
-    m3.metric("Risco Postura", "Sim" if risco_postura == 1 else "Não")
-
-st.sidebar.info("Ajuste os sliders para simular o comportamento do aluno e clique no botão de análise.")
+# Sidebar com informações adicionais
+st.sidebar.header("Sobre o Modelo")
+st.sidebar.write("""
+Este modelo foi treinado com dados históricos da Passos Mágicos (2020-2022). 
+Ele analisa o impacto combinado de notas, engajamento e fatores psicopedagógicos.
+""")
+st.sidebar.divider()
+st.sidebar.info("Certifique-se de que o arquivo `requirements.txt` contenha `scikit-learn`, `joblib`, `pandas` e `streamlit`.")
